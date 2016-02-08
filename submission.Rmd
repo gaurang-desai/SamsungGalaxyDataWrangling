@@ -1,0 +1,120 @@
+---
+title: "Samsung Data Wraggling Project"
+author: "Gaurang Desai"
+date: "February 6, 2016"
+output: html_document
+---
+
+```{r}
+
+if (!require(dplyr)) {
+    install.packages("dplyr")
+    require(dplyr)
+}
+
+if (!require(tidyr)) {
+    install.packages("tidyr")
+    require(tidyr)
+}
+
+if (!require(data.table)) {
+    install.packages("data.table")
+    require(data.table)
+}
+
+```
+**Data Set Information:**
+
+The experiments have been carried out with a group of 30 volunteers within an age bracket of 19-48 years. Each person performed six activities (WALKING, WALKING_UPSTAIRS, WALKING_DOWNSTAIRS, SITTING, STANDING, LAYING) wearing a smartphone (Samsung Galaxy S II) on the waist. Using its embedded accelerometer and gyroscope, we captured 3-axial linear acceleration and 3-axial angular velocity at a constant rate of 50Hz. The experiments have been video-recorded to label the data manually. The obtained dataset has been randomly partitioned into two sets, where 70% of the volunteers was selected for generating the training data and 30% the test data. 
+
+The sensor signals (accelerometer and gyroscope) were pre-processed by applying noise filters and then sampled in fixed-width sliding windows of 2.56 sec and 50% overlap (128 readings/window). The sensor acceleration signal, which has gravitational and body motion components, was separated using a Butterworth low-pass filter into body acceleration and gravity. The gravitational force is assumed to have only low frequency components, therefore a filter with 0.3 Hz cutoff frequency was used. From each window, a vector of features was obtained by calculating variables from the time and frequency domain.
+
+Check the README.txt file for further details about this dataset. 
+
+** Load txt files in dataset **
+
+```{r}
+
+x <- read.table("test/X_test.txt")
+y <- read.table("test/y_test.txt")
+subject <- read.table("test/subject_test.txt")
+feature <- read.table("features.txt")
+
+```
+
+Append data from train
+
+```{r}
+
+x <- rbind(x, read.table("train/X_train.txt"))
+y <- rbind(y, read.table("train/y_train.txt"))
+subject <- rbind(subject, read.table("train/subject_train.txt"))
+
+```
+
+**Select mean and standard columns : **
+
+First assign column name from features
+
+```{r}
+colnames(x) <- c(make.names(feature$V2, unique = TRUE, allow_ = TRUE))
+```
+
+Select columns that contains "mean" and "standard"
+
+```{r}
+mean_std <- x %>% select(contains("mean"), contains("std"))
+```
+
+** Create Activity Table : **
+
+```{r}
+
+ActivityLabel = c(1,2,3,4,5,6)
+ActivityName = c("WALKING","WALKING_UPSTAIRS","WALKING_DOWNSTAIRS","SITTING","STANDING","LAYING")
+Activity = data.frame(ActivityLabel,ActivityName)
+
+```
+
+Join activity with features
+
+```{r}
+
+xy <- bind_cols(x,y)
+setnames(xy,"V1","ActivityLabel")
+xy_name <- left_join(xy, Activity)
+xy_subject_name <- bind_cols(subject,xy_name)
+
+```
+
+Now use tidy gather function to tidy up the data.
+
+```{r}
+xy_subject_name_tidy <- gather(xy_subject_name, "feature", "value", 2:562)
+```
+
+Now group by activity, subject and mean value
+
+```{r}
+
+tidy_data <- 
+  xy_subject_name_tidy %>% 
+  group_by(ActivityName, V1, feature) %>% 
+  summarise( mean = mean(value))
+
+```
+
+** Export Data **
+
+```{r}
+write.table(xy_subject_name, "subject_activity_features.txt", sep = "\t")
+write.table(mean_std, "mean_std.txt", sep = "\t")
+write.table(tidy_data, "tidy_data.txt", sep = "\t")
+write.table(xy_subject_name_tidy, "tidy_data_by_activity_name.txt", sep = "\t")
+write.table(y, "tidy_data.txt", sep = "\t")
+write.table(y, "y.txt", sep = "\t")
+write.table(x, "x.txt", sep = "\t")
+
+
+```
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
